@@ -1,2 +1,7 @@
 fastapi
 uvicorn
+psycopg
+psycopg[binary]
+dotenv
+itsdangerous
+httpx
