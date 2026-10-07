@@ -1,3 +1,5 @@
+//app/auth/callback/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { SignJWT } from "jose";
 import { BASE_URL } from "@/ENUM";
@@ -10,7 +12,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL("/login?error=missing_token", request.url)
     );
-  }
+  } 
 
   // 2. Backend URL
   const backendUrl = BASE_URL;
@@ -70,7 +72,7 @@ export async function GET(request: NextRequest) {
 
   // 8. Create redirect response
   const redirectResponse = NextResponse.redirect(
-    new URL("/dashboard", request.url)
+    new URL("/", request.url)
   );
 
   // 9. Set session cookie

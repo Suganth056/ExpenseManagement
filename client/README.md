@@ -20,6 +20,10 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Backend API
+
+The dashboard sends entry requests directly to the FastAPI URL configured in `ENUM.ts` (by default, `http://localhost:8000`). FastAPI's `FRONTEND_URL` must match the frontend origin so credentialed cross-origin requests are allowed. The browser sends the HttpOnly `session` cookie with these requests; the frontend and backend therefore need to use the same cookie host (or a shared parent domain in deployments), and both apps must use the same `SESSION_SECRET`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

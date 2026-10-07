@@ -149,7 +149,7 @@ async def google_callback(request: Request, code: str, state: str):
             "https://openidconnect.googleapis.com/v1/userinfo",
             headers={"Authorization": f"Bearer {access_token}"},
         )
-        print("User Response : ",user_response.json())
+        # print("User Response : ",user_response.json())
 
         if user_response.status_code != 200:
             error_response = RedirectResponse(f"{FRONTEND_URL}/login?error=userinfo_failed")

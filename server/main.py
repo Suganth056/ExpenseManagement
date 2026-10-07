@@ -1,14 +1,24 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config.db_config import get_connection
 
 from routes.auth import authRouter
+from routes.expense_Income import expense_router
 
 app = FastAPI()
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 
 app.include_router(authRouter,prefix='/auth',tags=['Auth'])
+app.include_router(expense_router,prefix='/add-expense',tags=['Expense'])
 
 @app.get('/')
 def greet():
@@ -36,4 +46,3 @@ def health_check():
         "code":200,
         "Message":"Health check passed"
     }
-
