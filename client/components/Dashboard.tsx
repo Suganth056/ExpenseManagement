@@ -227,7 +227,7 @@ export default function Dashboard({ user }: { user: User }) {
           <div className="flex items-center gap-6">
             <span className="text-lg font-bold text-indigo-600">💸 Expense Tracker</span>
             <nav className="hidden gap-4 text-sm font-medium sm:flex">
-              <Link href="/dashboard" className="text-indigo-600">Dashboard</Link>
+              <Link href="/" className="text-indigo-600">Dashboard</Link>
               {/* <Link href="/investment" className="text-slate-600 hover:text-indigo-600">Investment</Link> */}
             </nav>
           </div>

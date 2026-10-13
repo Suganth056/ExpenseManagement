@@ -106,7 +106,7 @@ async def google_login():
         key="oauth_state",
         value=state,
         httponly=True,
-        secure=False,
+        secure=True,
         samesite="lax",
         max_age=600,
     )
