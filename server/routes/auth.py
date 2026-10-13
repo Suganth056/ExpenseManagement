@@ -172,7 +172,7 @@ async def google_callback(request: Request, code: str, state: str):
         "picture": google_user.get("picture"),
     }
     handoff_token = serializer.dumps(session_payload)
-
+    print(FRONTEND_URL)
     redirect_response = RedirectResponse(f"{FRONTEND_URL}/auth/callback?token={handoff_token}")
     redirect_response.delete_cookie("oauth_state")
     return redirect_response
