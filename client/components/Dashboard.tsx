@@ -228,11 +228,11 @@ export default function Dashboard({ user }: { user: User }) {
             <span className="text-lg font-bold text-indigo-600">💸 Expense Tracker</span>
             <nav className="hidden gap-4 text-sm font-medium sm:flex">
               <Link href="/dashboard" className="text-indigo-600">Dashboard</Link>
-              <Link href="/investment" className="text-slate-600 hover:text-indigo-600">Investment</Link>
+              {/* <Link href="/investment" className="text-slate-600 hover:text-indigo-600">Investment</Link> */}
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/investment" className="text-sm font-medium text-slate-600 sm:hidden">Investment</Link>
+            {/* <Link href="/investment" className="text-sm font-medium text-slate-600 sm:hidden">Investment</Link> */}
             <div className="hidden text-right leading-tight sm:block">
               <p className="text-sm font-semibold">{user.name}</p>
               <p className="text-xs text-slate-500">{user.email}</p>
