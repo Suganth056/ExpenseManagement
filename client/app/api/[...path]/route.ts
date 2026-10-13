@@ -1,6 +1,7 @@
 // app/api/[...path]/route.ts
-// The session cookie is httpOnly, so the browser can't send it to FastAPI directly.
-// This proxy reads it server-side and forwards it as a Bearer token.
+// The session cookie is httpOnly and lives on the frontend domain, so the browser
+// can't send it to FastAPI directly. This proxy reads it server-side and forwards
+// it to the backend as a Bearer token.
 import { cookies } from "next/headers";
 import { BASE_URL } from "@/ENUM";
 
@@ -11,9 +12,21 @@ async function handler(
   const { path } = await params;
   const token = (await cookies()).get("session")?.value;
   if (!token) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  console.log(path);
-  const hasBody = !["GET", "DELETE"].includes(req.method);
-  const res = await fetch(`${BASE_URL}/${path.join("/")}`, {
+
+  // FastAPI collection routes end with a trailing slash ("/add-expense/").
+  // Calling without it triggers a 307 redirect, and the Authorization header is
+  // dropped when the redirect is followed. So build the exact URL up front:
+  //   /api/add-expense      -> {BASE_URL}/add-expense/
+  //   /api/add-expense/5    -> {BASE_URL}/add-expense/5
+  const target =
+    path.length === 1
+      ? `${BASE_URL}/${path[0]}/`
+      : `${BASE_URL}/${path.join("/")}`;
+
+  const search = new URL(req.url).search;
+  const hasBody = !["GET", "HEAD", "DELETE"].includes(req.method);
+
+  const res = await fetch(`${target}${search}`, {
     method: req.method,
     body: hasBody ? await req.text() : undefined,
     cache: "no-store",

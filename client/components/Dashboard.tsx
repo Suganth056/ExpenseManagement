@@ -6,7 +6,6 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
   CartesianGrid, ResponsiveContainer, Legend,
 } from "recharts";
-import {BASE_URL} from "@/ENUM";
 
 type Rec = {
   id: number; date: string; type: "Income" | "Expense";
@@ -14,7 +13,10 @@ type Rec = {
 };
 type User = { email: string; name?: string; picture?: string };
 
-const API = `${BASE_URL}/add-expense`;
+// All calls go through the Next.js proxy (app/api/[...path]/route.ts), which
+// reads the httpOnly session cookie on the server and forwards it to FastAPI
+// as a Bearer token. The browser never talks to the backend domain directly.
+const API = "/api/add-expense";
 const CATS = ["food", "rent", "clothes", "house", "travel","food-outside", "health","Mobile Recharge","Own Expenses","others"];
 const COLORS = ["#6366f1", "#f59e0b", "#ec4899", "#10b981", "#0ea5e9", "#94a3b8", "#f43f5e", "#8b5cf6", "#f97316", "#eab308"];
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -69,7 +71,6 @@ function EntryForm({ init, onClose, onSaved }: { init: Partial<Rec>; onClose: ()
     try {
       const response = await fetch(f.id ? `${API}/${f.id}` : API, {
         method: f.id ? "PUT" : "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date: f.date, type: f.type, amount: Number(f.amount),
@@ -144,7 +145,7 @@ export default function Dashboard({ user }: { user: User }) {
 
   const load = async () => {
     try {
-      const response = await fetch(API, { credentials: "include" });
+      const response = await fetch(API);
       if (!response.ok) throw new Error("Could not load dashboard entries.");
       setRecs(await response.json());
       setLoadError("");
@@ -155,7 +156,7 @@ export default function Dashboard({ user }: { user: User }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(API, { credentials: "include", signal: controller.signal })
+    fetch(API, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("Could not load dashboard entries.");
         return response.json();
@@ -210,7 +211,6 @@ export default function Dashboard({ user }: { user: User }) {
     try {
       const response = await fetch(`${API}/${id}`, {
         method: "DELETE",
-        credentials: "include",
       });
       if (!response.ok) throw new Error("Could not delete the entry.");
       await load();
