@@ -51,6 +51,22 @@ function MonthBars({ data, color }: { data: { name: string; v: number }[]; color
   );
 }
 
+// Donut chart of expenses by category (used for both the year and the month view)
+function CategoryPie({ data }: { data: { name: string; value: number }[] }) {
+  if (data.length === 0) return <Empty />;
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <Pie data={data} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={2}>
+          {data.map((p) => <Cell key={p.name} fill={COLORS[CATS.indexOf(p.name)]} />)}
+        </Pie>
+        <Tooltip formatter={(v) => inr(Number(v))} />
+        <Legend />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+
 function EntryForm({ init, onClose, onSaved }: { init: Partial<Rec>; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({
     id: init.id ?? 0,
@@ -147,12 +163,16 @@ export default function Dashboard({ user }: { user: User }) {
       setLoggingOut(false);
     }
   };
+
   const now = new Date();
   const [recs, setRecs] = useState<Rec[]>([]);
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [form, setForm] = useState<Partial<Rec> | null>(null);
   const [showRecords, setShowRecords] = useState(false);
+  // True when the edit form was opened from the records list, so the list
+  // can come back after the form is saved or cancelled.
+  const [returnToRecords, setReturnToRecords] = useState(false);
   const [loadError, setLoadError] = useState("");
 
   const load = async () => {
@@ -188,25 +208,29 @@ export default function Dashboard({ user }: { user: User }) {
   const d = useMemo(() => {
     const years = Array.from(new Set([now.getFullYear(), ...recs.map((r) => +r.date.slice(0, 4))])).sort((a, b) => b - a);
     const inYear = recs.filter((r) => +r.date.slice(0, 4) === year);
+    const inMonth = inYear.filter((r) => +r.date.slice(5, 7) - 1 === month);
     const m = MONTHS.map((name, i) => {
       const rows = inYear.filter((r) => +r.date.slice(5, 7) - 1 === i);
       const income = rows.filter((r) => r.type === "Income").reduce((s, r) => s + r.amount, 0);
       const expense = rows.filter((r) => r.type === "Expense").reduce((s, r) => s + r.amount, 0);
       return { name, income, expense, savings: income - expense };
     });
-    const pie = CATS.map((c) => ({
-      name: c,
-      value: inYear.filter((r) => r.type === "Expense" && (r.expense_type ?? "others") === c).reduce((s, r) => s + r.amount, 0),
-    })).filter((x) => x.value > 0);
+    const pieOf = (rows: Rec[]) =>
+      CATS.map((c) => ({
+        name: c,
+        value: rows.filter((r) => r.type === "Expense" && (r.expense_type ?? "others") === c).reduce((s, r) => s + r.amount, 0),
+      })).filter((x) => x.value > 0);
+    const pie = pieOf(inYear);
+    const pieMonth = pieOf(inMonth);
     const days = new Date(year, month + 1, 0).getDate();
     const daily = Array.from({ length: days }, (_, i) => ({
       name: String(i + 1),
-      v: inYear.filter((r) => r.type === "Expense" && +r.date.slice(5, 7) - 1 === month && +r.date.slice(8, 10) === i + 1)
+      v: inMonth.filter((r) => r.type === "Expense" && +r.date.slice(8, 10) === i + 1)
         .reduce((s, r) => s + r.amount, 0),
     }));
     const income = recs.filter((r) => r.type === "Income").reduce((s, r) => s + r.amount, 0);
     const expense = recs.filter((r) => r.type === "Expense").reduce((s, r) => s + r.amount, 0);
-    return { years, m, pie, daily, income, expense };
+    return { years, m, pie, pieMonth, daily, income, expense };
   }, [recs, year, month]);
 
   const stats = [
@@ -217,6 +241,22 @@ export default function Dashboard({ user }: { user: User }) {
   ];
 
   const sel = "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
+
+  // Close the form; if it was opened from the records list, bring the list back.
+  const closeForm = () => {
+    setForm(null);
+    if (returnToRecords) {
+      setShowRecords(true);
+      setReturnToRecords(false);
+    }
+  };
+
+  // Edit from the records list: hide the list first so the form isn't covered.
+  const startEdit = (r: Rec) => {
+    setShowRecords(false);
+    setReturnToRecords(true);
+    setForm(r);
+  };
 
   async function del(id: number) {
     if (!confirm("Delete this record?")) return;
@@ -253,7 +293,7 @@ export default function Dashboard({ user }: { user: User }) {
             {user.picture
               ? <img src={user.picture} alt="" referrerPolicy="no-referrer" className="h-9 w-9 rounded-full ring-2 ring-indigo-100" />
               : <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 font-semibold text-indigo-600">{user.name?.[0] ?? "U"}</div>}
-              <button
+            <button
               onClick={handleLogout}
               disabled={loggingOut}
               className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60"
@@ -293,20 +333,13 @@ export default function Dashboard({ user }: { user: User }) {
           ))}
         </div>
 
-        {/* Row 2 */}
-        <div className="grid gap-4 lg:grid-cols-2">
+        {/* Row 2: category pies (year + selected month) and monthly expense */}
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
           <Card title={`Expense by category · ${year}`}>
-            {d.pie.length === 0 ? <Empty /> : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={d.pie} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={2}>
-                    {d.pie.map((p) => <Cell key={p.name} fill={COLORS[CATS.indexOf(p.name)]} />)}
-                  </Pie>
-                  <Tooltip formatter={(v) => inr(Number(v))} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
+            <CategoryPie data={d.pie} />
+          </Card>
+          <Card title={`Expense by category · ${MONTHS[month]} ${year}`}>
+            <CategoryPie data={d.pieMonth} />
           </Card>
           <Card title={`Monthly expense · ${year}`}>
             <MonthBars data={d.m.map((x) => ({ name: x.name, v: x.expense }))} color="#f43f5e" />
@@ -330,7 +363,11 @@ export default function Dashboard({ user }: { user: User }) {
       </main>
 
       {form && (
-        <EntryForm init={form} onClose={() => setForm(null)} onSaved={() => { setForm(null); load(); }} />
+        <EntryForm
+          init={form}
+          onClose={closeForm}
+          onSaved={() => { closeForm(); load(); }}
+        />
       )}
 
       {showRecords && (
@@ -349,7 +386,7 @@ export default function Dashboard({ user }: { user: User }) {
                     <td className="font-medium">{inr(r.amount)}</td>
                     <td className="max-w-[200px] truncate text-slate-500">{r.remarks}</td>
                     <td className="space-x-3 text-right">
-                      <button onClick={() => setForm(r)} className="font-medium text-indigo-600 hover:underline">Edit</button>
+                      <button onClick={() => startEdit(r)} className="font-medium text-indigo-600 hover:underline">Edit</button>
                       <button onClick={() => del(r.id)} className="font-medium text-rose-600 hover:underline">Delete</button>
                     </td>
                   </tr>
