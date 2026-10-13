@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
 
   // 3. Helper function for all frontend redirects
   const redirectToFrontend = (path: string) => {
+    console.log(`Redirecting to frontend: ${FRONTEND_URL}${path}`);
     return NextResponse.redirect(new URL(path, FRONTEND_URL));
   };
 
