@@ -6,6 +6,7 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
   CartesianGrid, ResponsiveContainer, Legend,
 } from "recharts";
+import { useAuth } from "@/context/AuthContext";
 
 type Rec = {
   id: number; date: string; type: "Income" | "Expense";
@@ -135,6 +136,17 @@ function Modal({ title, onClose, children, wide }: { title: string; onClose: () 
 }
 
 export default function Dashboard({ user }: { user: User }) {
+  const { logout } = useAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
   const now = new Date();
   const [recs, setRecs] = useState<Rec[]>([]);
   const [year, setYear] = useState(now.getFullYear());
@@ -241,6 +253,13 @@ export default function Dashboard({ user }: { user: User }) {
             {user.picture
               ? <img src={user.picture} alt="" referrerPolicy="no-referrer" className="h-9 w-9 rounded-full ring-2 ring-indigo-100" />
               : <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 font-semibold text-indigo-600">{user.name?.[0] ?? "U"}</div>}
+              <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60"
+            >
+              {loggingOut ? "Logging out…" : "Logout"}
+            </button>
           </div>
         </div>
       </header>
