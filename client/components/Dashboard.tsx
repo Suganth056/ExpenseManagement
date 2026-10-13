@@ -15,8 +15,8 @@ type Rec = {
 type User = { email: string; name?: string; picture?: string };
 
 const API = `${BASE_URL}/add-expense`;
-const CATS = ["food", "rent", "clothes", "house", "travel","food-outside", "health","others"];
-const COLORS = ["#6366f1", "#f59e0b", "#ec4899", "#10b981", "#0ea5e9", "#94a3b8"];
+const CATS = ["food", "rent", "clothes", "house", "travel","food-outside", "health","Mobile Recharge","Own Expenses","others"];
+const COLORS = ["#6366f1", "#f59e0b", "#ec4899", "#10b981", "#0ea5e9", "#94a3b8", "#f43f5e", "#8b5cf6", "#f97316", "#eab308"];
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const inr = (n: number) =>
   n.toLocaleString("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
