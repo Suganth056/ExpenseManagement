@@ -25,10 +25,12 @@ const inr = (n: number) =>
   n.toLocaleString("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const today = () => new Date().toISOString().slice(0, 10);
 
+// The "[&_*]:outline-none" removes the focus outline/border Recharts draws
+// around the chart (svg, sectors, bars) when you click on it.
 const Card = ({ title, children }: { title: string; children: ReactNode }) => (
   <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
     <h2 className="mb-3 text-sm font-semibold text-slate-600">{title}</h2>
-    <div className="h-64">{children}</div>
+    <div className="h-64 select-none [&_*]:outline-none">{children}</div>
   </section>
 );
 
@@ -40,7 +42,7 @@ function MonthBars({ data, color }: { data: { name: string; v: number }[]; color
   if (!data.some((d) => d.v)) return <Empty />;
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data}>
+      <BarChart data={data} accessibilityLayer={false}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="name" tick={{ fontSize: 11 }} />
         <YAxis tick={{ fontSize: 11 }} width={48} />
@@ -51,13 +53,27 @@ function MonthBars({ data, color }: { data: { name: string; v: number }[]; color
   );
 }
 
-// Donut chart of expenses by category (used for both the year and the month view)
+// Donut chart of expenses by category (used for both the year and the month view).
+// Amounts are drawn next to each slice by default, no hover needed.
 function CategoryPie({ data }: { data: { name: string; value: number }[] }) {
   if (data.length === 0) return <Empty />;
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie data={data} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={2}>
+      <PieChart accessibilityLayer={false}>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          innerRadius={45}
+          outerRadius={70}
+          paddingAngle={2}
+          labelLine
+          label={({ x, y, value, textAnchor }) => (
+            <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={11} fontWeight={600} fill="#334155">
+              {inr(Number(value))}
+            </text>
+          )}
+        >
           {data.map((p) => <Cell key={p.name} fill={COLORS[CATS.indexOf(p.name)]} />)}
         </Pie>
         <Tooltip formatter={(v) => inr(Number(v))} />
@@ -167,9 +183,12 @@ export default function Dashboard({ user }: { user: User }) {
   const now = new Date();
   const [recs, setRecs] = useState<Rec[]>([]);
   const [year, setYear] = useState(now.getFullYear());
+  // Text shown in the year input; `year` only updates once it is a valid 4-digit year.
+  const [yearText, setYearText] = useState(String(now.getFullYear()));
   const [month, setMonth] = useState(now.getMonth());
   const [form, setForm] = useState<Partial<Rec> | null>(null);
   const [showRecords, setShowRecords] = useState(false);
+  const [search, setSearch] = useState("");
   // True when the edit form was opened from the records list, so the list
   // can come back after the form is saved or cancelled.
   const [returnToRecords, setReturnToRecords] = useState(false);
@@ -206,7 +225,6 @@ export default function Dashboard({ user }: { user: User }) {
   }, []);
 
   const d = useMemo(() => {
-    const years = Array.from(new Set([now.getFullYear(), ...recs.map((r) => +r.date.slice(0, 4))])).sort((a, b) => b - a);
     const inYear = recs.filter((r) => +r.date.slice(0, 4) === year);
     const inMonth = inYear.filter((r) => +r.date.slice(5, 7) - 1 === month);
     const m = MONTHS.map((name, i) => {
@@ -230,8 +248,21 @@ export default function Dashboard({ user }: { user: User }) {
     }));
     const income = recs.filter((r) => r.type === "Income").reduce((s, r) => s + r.amount, 0);
     const expense = recs.filter((r) => r.type === "Expense").reduce((s, r) => s + r.amount, 0);
-    return { years, m, pie, pieMonth, daily, income, expense };
+    return { m, pie, pieMonth, daily, income, expense };
   }, [recs, year, month]);
+
+  // Records for the selected month/year only; the search box filters within that month.
+  const monthRecs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return recs
+      .filter((r) => +r.date.slice(0, 4) === year && +r.date.slice(5, 7) - 1 === month)
+      .filter((r) =>
+        !q ||
+        [r.date, r.type, r.expense_type ?? "", r.remarks ?? "", String(r.amount)]
+          .some((v) => v.toLowerCase().includes(q))
+      )
+      .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+  }, [recs, year, month, search]);
 
   const stats = [
     // { label: "Total turnover", value: d.income + d.expense, color: "text-indigo-600", bg: "bg-indigo-50" },
@@ -241,6 +272,16 @@ export default function Dashboard({ user }: { user: User }) {
   ];
 
   const sel = "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
+
+  const onYearChange = (v: string) => {
+    setYearText(v);
+    if (/^\d{4}$/.test(v)) setYear(+v);
+  };
+
+  const closeRecords = () => {
+    setShowRecords(false);
+    setSearch("");
+  };
 
   // Close the form; if it was opened from the records list, bring the list back.
   const closeForm = () => {
@@ -313,9 +354,18 @@ export default function Dashboard({ user }: { user: User }) {
             <button onClick={() => setShowRecords(true)} className="rounded-lg border border-slate-300 bg-orange-200 px-4 py-2 text-sm font-semibold hover:bg-yellow-100">View Records</button>
           </div>
           <div className="flex gap-2">
-            <select className={sel} value={year} onChange={(e) => setYear(+e.target.value)}>
-              {d.years.map((y) => <option key={y}>{y}</option>)}
-            </select>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1900}
+              max={2100}
+              placeholder="Year"
+              aria-label="Year"
+              className={`${sel} w-24`}
+              value={yearText}
+              onChange={(e) => onYearChange(e.target.value)}
+              onBlur={() => { if (!/^\d{4}$/.test(yearText)) setYearText(String(year)); }}
+            />
             <select className={sel} value={month} onChange={(e) => setMonth(+e.target.value)}>
               {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
             </select>
@@ -371,14 +421,25 @@ export default function Dashboard({ user }: { user: User }) {
       )}
 
       {showRecords && (
-        <Modal title="All records" wide onClose={() => setShowRecords(false)}>
+        <Modal title={`Records · ${MONTHS[month]} ${year}`} wide onClose={closeRecords}>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <input
+              type="search"
+              autoFocus
+              placeholder={`Search in ${MONTHS[month]} ${year} (category, remarks, amount…)`}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none sm:max-w-sm"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <p className="text-xs text-slate-500">{monthRecs.length} record{monthRecs.length === 1 ? "" : "s"}</p>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[620px] text-left text-sm">
               <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
                 <tr><th className="py-2">Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Remarks</th><th className="text-right">Actions</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {recs.map((r) => (
+                {monthRecs.map((r) => (
                   <tr key={r.id}>
                     <td className="py-2">{r.date}</td>
                     <td><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${r.type === "Income" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>{r.type}</span></td>
@@ -391,7 +452,13 @@ export default function Dashboard({ user }: { user: User }) {
                     </td>
                   </tr>
                 ))}
-                {recs.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-slate-400">No records yet</td></tr>}
+                {monthRecs.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                      {search ? "No matching records this month" : "No records this month"}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
