@@ -57,6 +57,9 @@ function MonthBars({ data, color }: { data: { name: string; v: number }[]; color
 // Amounts are drawn next to each slice by default, no hover needed.
 function CategoryPie({ data }: { data: { name: string; value: number }[] }) {
   if (data.length === 0) return <Empty />;
+  // Every category's amount is shown in the legend, so slice labels are only
+  // drawn for slices big enough (>= 5%) to avoid overlapping text.
+  const amounts = Object.fromEntries(data.map((x) => [x.name, x.value]));
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart accessibilityLayer={false}>
@@ -67,17 +70,22 @@ function CategoryPie({ data }: { data: { name: string; value: number }[] }) {
           innerRadius={45}
           outerRadius={70}
           paddingAngle={2}
-          labelLine
-          label={({ x, y, value, textAnchor }) => (
-            <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={11} fontWeight={600} fill="#334155">
-              {inr(Number(value))}
-            </text>
-          )}
+          label={({ x, y, value, percent, textAnchor }:any) =>
+            percent >= 0.05 ? (
+              <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={11} fontWeight={600} fill="#334155">
+                {inr(Number(value))}
+              </text>
+            ) : null
+          }
+          labelLine={false}
         >
           {data.map((p) => <Cell key={p.name} fill={COLORS[CATS.indexOf(p.name)]} />)}
         </Pie>
         <Tooltip formatter={(v) => inr(Number(v))} />
-        <Legend />
+        <Legend
+          wrapperStyle={{ fontSize: 12 }}
+          formatter={(v) => `${v} · ${inr(amounts[String(v)] ?? 0)}`}
+        />
       </PieChart>
     </ResponsiveContainer>
   );
